@@ -185,9 +185,11 @@ def main():
     parser.add_argument('--config', type=str, help='config file path')
     args = parser.parse_args()
 
+    args.gpu = '0,1'
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
+    args.config = "configs/SleePyCo-Transformer_SL-10_numScales-3_Sleep-EDF-2013_scratch.json"
     # For reproducibility
     set_random_seed(args.seed, use_cuda=True)
 

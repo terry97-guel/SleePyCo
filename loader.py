@@ -83,39 +83,61 @@ class EEGDataLoader(Dataset):
         split_idx_list = np.load(os.path.join('./split_idx', 'idx_{}.npy'.format(self.dset_name)), allow_pickle=True)
 
         assert len(split_idx_list) == self.num_splits
-    
-        if self.dset_name == 'Sleep-EDF-2013':
-            for i in range(len(data_fname_list)):
-                subject_idx = int(data_fname_list[i][3:5])
-                if subject_idx == self.fold - 1:
-                    data_fname_dict['test'].append(data_fname_list[i])
-                elif subject_idx in split_idx_list[self.fold - 1]:
-                    data_fname_dict['val'].append(data_fname_list[i])
-                else:
-                    data_fname_dict['train'].append(data_fname_list[i])    
 
-        elif self.dset_name == 'Sleep-EDF-2018':
-            for i in range(len(data_fname_list)):
-                subject_idx = int(data_fname_list[i][3:5])
-                if subject_idx in split_idx_list[self.fold - 1][self.set]:
-                    data_fname_dict[self.set].append(data_fname_list[i])
+        from sklearn.model_selection import train_test_split
+        train_, val_ = train_test_split(data_fname_list, test_size=0.2, random_state= 777)
+        data_fname_dict['train'] = train_
+        data_fname_dict['val'] = val_
+        data_fname_dict['test'] = val_
+    
+        # if self.dset_name == 'Sleep-EDF-2013':
+        #     for i in range(len(data_fname_list)):
+        #         subject_idx = int(data_fname_list[i][3:5])
+        #         if subject_idx == self.fold - 1:
+        #             data_fname_dict['test'].append(data_fname_list[i])
+        #         elif subject_idx in split_idx_list[self.fold - 1]:
+        #             data_fname_dict['val'].append(data_fname_list[i])
+        #         else:
+        #             data_fname_dict['train'].append(data_fname_list[i])    
+
+        # elif self.dset_name == 'Sleep-EDF-2018':
+        #     for i in range(len(data_fname_list)):
+        #         subject_idx = int(data_fname_list[i][3:5])
+        #         if subject_idx in split_idx_list[self.fold - 1][self.set]:
+        #             data_fname_dict[self.set].append(data_fname_list[i])
                     
-        elif self.dset_name == 'MASS' or self.dset_name == 'Physio2018' or self.dset_name == 'SHHS':
-            for i in range(len(data_fname_list)):
-                if i in split_idx_list[self.fold - 1][self.set]:
-                    data_fname_dict[self.set].append(data_fname_list[i])
-        else:
-            raise NameError("dataset '{}' cannot be found.".format(self.dataset))
-            
+        # elif self.dset_name == 'MASS' or self.dset_name == 'Physio2018' or self.dset_name == 'SHHS':
+        #     for i in range(len(data_fname_list)):
+        #         if i in split_idx_list[self.fold - 1][self.set]:
+        #             data_fname_dict[self.set].append(data_fname_list[i])
+        # else:
+        #     raise NameError("dataset '{}' cannot be found.".format(self.dataset))
+        
+        inputs_dict = {}
+        labels_dict = {}
         for data_fname in data_fname_dict[self.set]:
             npz_file = np.load(os.path.join(data_root, data_fname))
-            inputs.append(npz_file['x'])
-            labels.append(npz_file['y'])
+            # inputs.append(npz_file['x'])
+            # labels.append(npz_file['y'])
             seq_len = self.seq_len
             if self.dset_name== 'MASS' and ('-02-' in data_fname or '-04-' in data_fname or '-05-' in data_fname):
                 seq_len = int(self.seq_len * 1.5)
-            for i in range(len(npz_file['y']) - seq_len + 1):
-                epochs.append([file_idx, i, seq_len])
-            file_idx += 1
+            # for i in range(len(npz_file['y']) - seq_len + 1):
+            file_idx =  str.split(data_fname, '_')[0]
+            
+            if file_idx not in inputs_dict.keys():
+                inputs_dict[file_idx] = []
+                labels_dict[file_idx] = []
+            inputs_dict[file_idx].append(npz_file['x'])
+            labels_dict[file_idx].append(npz_file['y'])
+            i = str.split(str.split(data_fname, '_')[1],'.npz')[0]
+            epochs.append([file_idx, i, seq_len])
+            # file_idx += 1
+        
+        for key, item in inputs_dict.items():
+            inputs.append(np.array(item))
+        
+        for key, item in labels_dict.items():
+            labels.append(np.array(item))
         
         return inputs, labels, epochs
